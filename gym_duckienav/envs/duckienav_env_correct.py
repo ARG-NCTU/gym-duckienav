@@ -11,7 +11,7 @@ MAP = [
     "|O| : |O| |O| |O| |",
     "| : |O|O| : : : : |",
     "| |O|O|O|O|O| |O| |",
-    "| : :R: : : : :O: |",
+    "| : :R: : : : |O| |",
     "| |O|O|O| |O|O|O| |",
     "| |O| : : |O| : : |",
     "| |O| |O|O|O|B|O| |",
@@ -24,7 +24,11 @@ MAP = [
 ]
 
 ACTIONS = ["South", "North", "East", "West", "Pickup", "Dropoff"]
-
+nS = 2520
+nR = 14 
+nC = 9
+maxR = nR-1
+maxC = nC-1
 class DuckieNavEnv(discrete.DiscreteEnv):
     """
     The Taxi Problem
@@ -46,11 +50,7 @@ class DuckieNavEnv(discrete.DiscreteEnv):
 
         self.locs = locs = [(5,2), (0,7), (13,3), (8,6)]
 
-        nS = 2520
-        nR = 14 
-        nC = 9
-        maxR = nR-1
-        maxC = nC-1
+        
         isd = np.zeros(nS)
         nA = 6
         P = {s : {a : [] for a in range(nA)} for s in range(nS)}
@@ -68,13 +68,13 @@ class DuckieNavEnv(discrete.DiscreteEnv):
                             done = False
                             taxiloc = (row, col)
 
-                            if a==0 and self.desc[2+row,2*col+1]!=b"O":
+                            if a==0:
                                 newrow = min(row+1, maxR)
-                            elif a==1 and self.desc[row,2*col+1]!=b"O":
+                            elif a==1:
                                 newrow = max(row-1, 0)
-                            if a==2 and self.desc[1+row,2*col+2]==b":":
+                            if a==2:
                                 newcol = min(col+1, maxC)
-                            elif a==3 and self.desc[1+row,2*col]==b":":
+                            elif a==3:
                                 newcol = max(col-1, 0)
                             elif a==4: # pickup
                                 if (passidx < 4 and taxiloc == locs[passidx]):
@@ -89,6 +89,8 @@ class DuckieNavEnv(discrete.DiscreteEnv):
                                     newpassidx = locs.index(taxiloc)
                                 else:
                                     reward = -10
+                            if self.check_if_bump(newrow,newcol,a) == True:
+                                    reward = -50
                             newstate = self.encode(newrow, newcol, newpassidx, destidx)
                             P[state][a].append((1.0, newstate, reward, done))
         isd /= isd.sum()
@@ -116,9 +118,30 @@ class DuckieNavEnv(discrete.DiscreteEnv):
         out.append(i)
         assert 0 <= i < 14 
         return reversed(out)
-    
-    def taxi_loc(self, row, col):
+
+    def check_if_bump(self,row,col,a):
+        bump = False
+        if self.taxi_loc(row,col) == b"O":
+            bump = True
+        if col == 0 and a == 3:
+            bump = True
+        if col == maxC and a == 2:
+            bump = True
+        if row == 0 and a == 1:
+            bump = True
+        if row == maxR and a == 0:
+            bump = True
+        return bump
+
+    def taxi_loc(self,row,col):
         return self.desc[1+row,2*col+1]
+
+    def reset(self):
+        while True:        
+            s = super(DuckieNavEnv,self).reset()
+            p = list(self.decode(s))
+            if(self.taxi_loc(p[0],p[1]) != b"O"):
+                return s
 
     def render(self, mode='human'):
         outfile = StringIO() if mode == 'ansi' else sys.stdout
