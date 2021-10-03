@@ -68,9 +68,9 @@ class DuckieNavEnv(discrete.DiscreteEnv):
                             done = False
                             taxiloc = (row, col)
 
-                            if a==0:
+                            if a==0 and self.desc[1+row + 1, 2*col+1] != b"O":
                                 newrow = min(row+1, maxR)
-                            elif a==1:
+                            elif a==1 and self.desc[1+row -1, 2*col+1] != b"O":
                                 newrow = max(row-1, 0)
                             if a==2 and self.desc[1+row,2*col+2]==b":":
                                 newcol = min(col+1, maxC)
